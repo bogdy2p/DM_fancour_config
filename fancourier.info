@@ -1,0 +1,4 @@
+name = Fancourier PBC
+description = Fancourier Module try by pbc
+core = 7.x
+package = Experimental

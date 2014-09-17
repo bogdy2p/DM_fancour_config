@@ -1,0 +1,122 @@
+<?php
+
+require_once('fancourier.class.php');
+//module_load_include('php', 'fancourier', 'fancourier.class.php');
+
+/*
+ * @file
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/**
+ * Implementing hook_menu();
+ */
+function fancourier_menu() {
+  $items['admin/config/fancourier/configuration'] = array(
+    'title' => 'Fancourier Configuration',
+    'description' => 'Fancourier Description',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('fancourier_form'),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'menu_name' => 'management',
+    'weight' => -5,
+  );
+  return $items;
+}
+
+function fancourier_form($form, &$form_state) {
+
+  $db_fan_login = variable_get('fancourier', array());
+
+  if (isset($db_fan_login['login'])) { // daca exista array-ul pentru login in cadrul array-ului de date fancourier
+    $db_fan_user = $db_fan_login['login']['username'];
+    $db_fan_pass = $db_fan_login['login']['user_pass'];
+    $db_fan_client = $db_fan_login['login']['client_id'];
+  }
+  else {
+    $db_fan_user = 'default_please_change';
+    $db_fan_pass = 'default_please_change';
+    $db_fan_client = 'default_please_change';
+  }
+
+  $form['username'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#description' => 'Your Fancourier API username',
+    '#default_value' => $db_fan_user,
+    '#required' => TRUE,
+  );
+  $form['password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Password'),
+    '#description' => 'Your Fancourier API password.',
+    '#default_value' => $db_fan_pass,
+    '#required' => TRUE,
+  );
+  $form['client_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Client ID'),
+    '#description' => 'Your Fancourier API client ID',
+    '#default_value' => $db_fan_client,
+    '#required' => TRUE,
+  );
+
+  $checked_options_array = array();
+  if (isset($db_fan_login['services'])) {
+    foreach ($db_fan_login['services'] as $key => $value) {
+      $checked_options_array[$key] = $key;
+    }
+  }
+
+  if (isset($db_fan_login['login'])) {
+    $fan = new FanCourier($db_fan_login['login']);
+    $services_array = $fan->getServices();
+    // check if the fan->getServices() has any error , and if the services_array is really an array.
+    // if !has error, is array
+
+    $form['checkboxes'] = array(
+      '#type' => 'checkboxes',
+      '#title' => 'checkboxestitle',
+      '#multiple' => TRUE,
+      '#description' => 'All availlable shipping methods',
+      '#options' => $services_array,
+      '#default_value' => $checked_options_array, //array('checked' => 'Standard','Standard' => 'checked',),//$checked_options_array,
+    );
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+  return $form;
+}
+
+function fancourier_form_submit($form, &$form_state) {
+  //dpm($form);
+  //dpm($form_state);
+  $usernameinput = $form_state['values']['username'];
+  $passwordinput = $form_state['values']['password'];
+  $clientidinput = $form_state['values']['client_id'];
+
+  $login_details = array(
+    'username' => $usernameinput,
+    'user_pass' => $passwordinput,
+    'client_id' => $clientidinput,
+  );
+  //Pana aici are legatura strict cu login (primele 3 inputuri)  
+  $enabled_services = array();
+  if (isset($form_state['values']['checkboxes'])) {
+    $checkboxes = $form_state['values']['checkboxes'];
+    $enabled_services = array_filter($checkboxes);
+  }
+
+  $fancourier_details = array(
+    'login' => $login_details,
+    'services' => $enabled_services
+  );
+ variable_set('fancourier', $fancourier_details);
+ dpm('The configuration has been saved!');
+   
+}
